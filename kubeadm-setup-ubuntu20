@@ -1,0 +1,95 @@
+Ref: https://www.fosstechnix.com/how-to-install-kubernetes-cluster-on-ubuntu/
+user should be ubuntu:
+
+master:
+
+     sudo apt-get install -y     apt-transport-https     ca-certificates     curl     gnupg     lsb-release
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+      echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      sudo apt update
+      sudo apt-get install docker-ce docker-ce-cli containerd.io
+      cat <<EOF | sudo tee /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+
+   10  sudo usermod -aG docker $USER
+   11  sudo chmod 666 /var/run/docker.sock
+   12  sudo systemctl start docker.service
+   13  sudo systemctl status docker.service
+   14  sudo systemctl enable docker.service
+   15  sudo systemctl restart docker
+   24  sudo rm /etc/containerd/config.toml
+   25  sudo systemctl restart containerd
+   16  sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+   17  echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+   19  sudo apt update
+   20  sudo apt-get install -y kubelet kubeadm kubectl
+   21  sudo apt-mark hold kubelet kubeadm kubectl
+   27  sudo kubeadm init --pod-network-cidr 10.0.0.0/16 --ignore-preflight-errors=all
+   28  sudo mkdir -p $HOME/.kube
+   29  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+   30  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+   31  kubectl get nodes
+   33  kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+   34  kubectl get nodes
+   35  kubectl get all --all-namespaces
+   36  kubectl get pod --all-namespaces
+   37  kubectl get nodes
+
+
+
+node:
+
+ 2  sudo apt-get install -y     apt-transport-https     ca-certificates     curl     gnupg     lsb-release
+    3  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    4  echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    5  sudo apt-get update
+     sudo apt-get install docker-ce docker-ce-cli containerd.io
+    6  cat <<EOF | sudo tee /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+
+    7  sudo usermod -aG docker $USER
+    8  sudo chmod 666 /var/run/docker.sock
+    9  sudo systemctl enable docker.service
+   10  sudo systemctl restart docker
+   11  sudo rm /etc/containerd/config.toml
+   12  sudo systemctl restart containerd
+   13  sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+   14  echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+   15  sudo apt update
+   17  sudo apt-get install -y kubelet kubeadm kubectl
+   16  sudo apt-mark hold kubelet kubeadm kubectl
+   18  sudo kubeadm join 172.31.9.243:6443 --token 5r8dp1.joi18srndzf1blik --discovery-token-ca-cert-hash sha256:dccc602bef2fbefb0027cb9295304792bf9503346fc62b8f95acca1b5b8facdb
+   
+if you want to generate kubeadm join command from master use below command in master node:
+sudo kubeadm token create --print-join-command
+
+
+client:
+2  sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    3  echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    4  sudo apt update
+    5  sudo apt install kubectl -y
+    8  mkdir .kube
+    9  cd .kube/
+   10  touch config
+   11  vi config
+   
+   Note:  get config contenrt from master node(cat ~/.kube/config)
